@@ -5,13 +5,6 @@
 #include <iostream>
 #include <string>
 
-namespace sokket {
-	namespace config {
-		extern std::string port;
-		extern std::string address;
-		extern int bufferSize;
-	}
-}
 #ifdef _WIN32
 
 #pragma comment(lib, "ws2_32.lib")
@@ -19,5 +12,17 @@ namespace sokket {
 #include <ws2tcpip.h>
 
 #endif //_WIN32
+
+namespace sokket {
+	namespace config {
+		extern std::string port;
+		extern std::string address;
+		extern const int bufferSize;
+	}
+
+	int shutdownSocket (SOCKET& _sokket);
+	int sendSocket (SOCKET& _sokket, std::string& sendBuffer);
+	int receiveSocket (SOCKET& _sokket, std::string& receiveBufferString);
+}
 
 #endif //SOKKET_HPP
