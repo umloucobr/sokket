@@ -4,9 +4,8 @@
 #include "sokket.hpp"
 namespace sokket {
 	namespace client {
-		int createSocket ();
+		SOCKET setupSocket (std::string& string, bool isText);
 	}
 }
-
 #endif //CLIENT_HPP
 

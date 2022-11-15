@@ -9,6 +9,7 @@ namespace sokket {
 	namespace config {
 		extern std::string port;
 		extern std::string address;
+		extern int bufferSize;
 	}
 }
 #ifdef _WIN32
