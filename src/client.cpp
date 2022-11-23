@@ -29,7 +29,7 @@ SOCKET sokket::client::setupSocket() {
     }
 
     // Create a SOCKET for connecting to server
-    SOCKET ConnectSocket = INVALID_SOCKET;
+    SOCKET ConnectSocket {INVALID_SOCKET};
 
     for (ptr = result; ptr != NULL; ptr=ptr->ai_next)
     {

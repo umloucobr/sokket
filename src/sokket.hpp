@@ -4,6 +4,7 @@
 
 #include <iostream>
 #include <string>
+#include <cstdint>
 
 #ifdef _WIN32
 
@@ -21,7 +22,7 @@ namespace sokket {
 	}
 
 	int shutdownSocket (SOCKET& _sokket);
-	int sendSocket (SOCKET& _sokket, std::string& sendBuffer);
+	int sendSocket (SOCKET& _sokket, std::string& sendBuffer, int sendBufferSize);
 	int receiveSocket (SOCKET& _sokket, std::string& receiveBufferString);
 }
 

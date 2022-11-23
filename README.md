@@ -1,2 +1,2 @@
 # Sokket
-A program that transfer information between clients and a server.
+A program that transfer information between a client and a server.

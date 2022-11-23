@@ -58,8 +58,7 @@ SOCKET sokket::server::setupSocket() {
         return 1;
     }
 
-    SOCKET ClientSocket;
-    ClientSocket = INVALID_SOCKET;
+    SOCKET ClientSocket {INVALID_SOCKET};
 
     // Accept a client socket.
     ClientSocket = accept(ListenSocket, NULL, NULL);
