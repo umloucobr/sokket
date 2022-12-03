@@ -5,8 +5,12 @@
 #include <iostream>
 #include <string>
 #include <cstdint>
+#include <algorithm>
+#include <memory>
 
 #ifdef _WIN32
+//windows.h messes with std::min and std::max.
+#define NOMINMAX
 
 #pragma comment(lib, "ws2_32.lib")
 #include <winsock2.h>
@@ -22,8 +26,8 @@ namespace sokket {
 	}
 
 	int shutdownSocket (SOCKET& _sokket);
-	int sendSocket (SOCKET& _sokket, std::string& sendBuffer, int sendBufferSize);
-	int receiveSocket (SOCKET& _sokket, std::string& receiveBufferString);
+	int sendSocket (SOCKET& _sokket, std::string& sendBuffer, std::uint64_t sendBufferSize);
+	int receiveSocket (SOCKET& _sokket, std::string& receivedInformation);
 }
 
 #endif //SOKKET_HPP
