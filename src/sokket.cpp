@@ -4,14 +4,15 @@
 
 extern std::string sokket::config::port {"27015"};
 extern std::string sokket::config::address {"localhost"};
-extern const int sokket::config::bufferSize {512};
+extern const int sokket::config::bufferSize {4};
 
 int sokket::sendSocket(SOCKET& _sokket, std::string& sendBuffer, std::uint64_t sendBufferSize) {
 	//std:uint64_t sendBufferSizeHtonll {htonll(sendBufferSize)};
 	int iResult {0}; 
 	std::uint64_t bytesRemaining {sendBufferSize}; //Used on std::min, making a copy because I need to decrease it.
 	std::uint64_t bytesSent {0};
-	std::uint64_t sendSocketSize {std::min(bytesRemaining, static_cast<std::uint64_t>(sokket::config::bufferSize))};
+	std::uint64_t sendSocketSize {0};
+	std::string buffer{};
 
 	/*Send size first.
 	iResult = send(_sokket, reinterpret_cast<char*>(&sendBufferSizeHtonll), sizeof(sendBufferSizeHtonll), 0);
@@ -22,18 +23,11 @@ int sokket::sendSocket(SOCKET& _sokket, std::string& sendBuffer, std::uint64_t s
 		return 1;
 	}*/
 
-	std::string buffer {};
-	buffer.assign(sendBuffer, 0, sendSocketSize); //\0;
-
 	while (bytesSent < sendBufferSize) {
-		sendSocketSize = std::min(bytesRemaining, static_cast<std::uint64_t>(sokket::config::bufferSize - 1));
+		sendSocketSize = std::min(bytesRemaining, static_cast<std::uint64_t>(sokket::config::bufferSize));
 		buffer.assign(sendBuffer, bytesSent, sendSocketSize);
-
-		//If it's the last packet, add space for a null terminator. 
-		if (sendSocketSize < sokket::config::bufferSize - 1)
-		{
-			sendSocketSize += 1;
-		}
+		std::cout << buffer;
+		std::cout << buffer.size();
 
 		iResult = send(_sokket, buffer.c_str(), sendSocketSize, 0); //\0.
 		if (iResult == SOCKET_ERROR) {
@@ -42,6 +36,19 @@ int sokket::sendSocket(SOCKET& _sokket, std::string& sendBuffer, std::uint64_t s
 			WSACleanup();
 			return 1;
 		}
+
+		/*If packet size is equal to buffer size, send one more packet with a null terminator.
+		if (sendSocketSize == sokket::config::bufferSize)
+		{
+			buffer.clear();
+			iResult = send(_sokket, buffer.c_str(), 1, 0); //\0.
+			if (iResult == SOCKET_ERROR) {
+				std::cerr << "send nullTerminator failed with error: " << WSAGetLastError() << ".\n";
+				closesocket(_sokket);
+				WSACleanup();
+				return 1;
+			}
+		}*/
 
 		bytesSent += sendSocketSize;
 		bytesRemaining -= sendSocketSize;
@@ -58,7 +65,7 @@ int sokket::sendSocket(SOCKET& _sokket, std::string& sendBuffer, std::uint64_t s
 int sokket::receiveSocket(SOCKET& _sokket, std::string& receivedInformation) {
 	bool connectionEnded {false};
 
-	char receiveBuffer[sokket::config::bufferSize];
+	char receiveBuffer[sokket::config::bufferSize + 1];
 
 	std::uint64_t packageSize {};
 	int iResult {};
@@ -79,25 +86,24 @@ int sokket::receiveSocket(SOCKET& _sokket, std::string& receivedInformation) {
 			return 1;
 		} */
 
-		iResult = recv(_sokket, receiveBuffer, sokket::config::bufferSize, 0);
+		iResult = recv(_sokket, receiveBuffer, sokket::config::bufferSize + 1, 0);
 		if (iResult > 0) {
 			connectionEnded = false;
 
 			if (receiveBuffer[iResult - 1] == '\n') {
 				receiveBuffer[iResult - 1] = '\0';
 			}
-
-			receiveBuffer[iResult - 1] = '\0';
-
-			std::cout << receiveBuffer << '\n';
+			
+			receiveBuffer[iResult] = '\0';
 
 			receivedInformation.append(receiveBuffer);
 		}
 
 		//Temporary because client closes automatically.
 		else if (iResult == 0 && !connectionEnded) {;
-			std::cout << std::endl;
+			std::cout << receivedInformation;
 			connectionEnded = true;
+			system("pause"); //Temporary for debugging.
 		}
 
 		else if (iResult < 0) {
@@ -130,8 +136,7 @@ int sokket::shutdownSocket(SOCKET& _sokket) {
 
 int main(int argc, char* argv[]) {
 	//512 a.
-	std::string test {"asdfhjasdlçfhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhfsdfsdfsdfsdfsdfddddddhhhhhhhhhhhhhhhhhhhhhhhhhjsaçfhasldujgkldhujaslifuhnjasioljdufioasujfhoasfasuihbgfiasuyhfgiasfgasiufgyasuifyhgasufyhgasiufdyhgasfsdfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffdd"};
-	std::string test2 {"hate it or love the underdogs are on top"};
+	std::string test {"oioi"};
 	std::string receiveBufferString{};
 	bool isClient {false};
 	SOCKET sokket {INVALID_SOCKET};
@@ -148,14 +153,15 @@ int main(int argc, char* argv[]) {
 	} */
 
 	if (isClient) {
-		sokket = sokket::client::setupSocket();
+		sokket::client::setupSocket(sokket);
 
 		std::uint64_t size {test.size()};
 		sokket::sendSocket(sokket, test, size);
 		sokket::shutdownSocket(sokket);
+		system("pause"); //Temporary for debugging.
 	}
 	else {
-		sokket = sokket::server::setupSocket();
+		sokket::server::setupSocket(sokket);
 		sokket::receiveSocket(sokket, receiveBufferString);
 		sokket::shutdownSocket(sokket);
 	}

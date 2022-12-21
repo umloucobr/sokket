@@ -4,7 +4,7 @@
 #include "sokket.hpp"
 namespace sokket {
 	namespace client {
-		SOCKET setupSocket ();
+		int setupSocket (SOCKET& sokket);
 	}
 }
 #endif //CLIENT_HPP

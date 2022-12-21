@@ -1,6 +1,6 @@
 #include "client.hpp"
 
-SOCKET sokket::client::setupSocket() {
+int sokket::client::setupSocket(SOCKET& sokket) {
 #ifdef _WIN32
     WSADATA wsaData;
     int iResulta{ WSAStartup(MAKEWORD(2, 2), &wsaData) };
@@ -56,5 +56,6 @@ SOCKET sokket::client::setupSocket() {
         WSACleanup();
         return 1;
     }
-    return ConnectSocket;
+    sokket = ConnectSocket;
+    return 0;
 }
