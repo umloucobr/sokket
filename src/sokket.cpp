@@ -7,22 +7,23 @@ extern std::string sokket::config::address {"localhost"};
 extern const int sokket::config::bufferSize {4};
 
 int sokket::sendSocket(SOCKET& _sokket, std::string& sendBuffer, std::uint64_t sendBufferSize) {
-	//std:uint64_t sendBufferSizeHtonll {htonll(sendBufferSize)};
 	int iResult {0}; 
 	std::uint64_t bytesRemaining {sendBufferSize}; //Used on std::min, making a copy because I need to decrease it.
 	std::uint64_t bytesSent {0};
-	std::uint64_t sendSocketSize {0};
+	std::uint64_t sendSocketSize {0}; //Size of the packet.
 	std::string buffer{};
+	std::string sendBufferSizeString {std::to_string(sendBufferSize)}; //Transform int in a std::string to send size over packet. Yes, it's trash but the send() function isn't accepting int.
 
-	/*Send size first.
-	iResult = send(_sokket, reinterpret_cast<char*>(&sendBufferSizeHtonll), sizeof(sendBufferSizeHtonll), 0);
+	//Send size first.
+	iResult = send(_sokket, sendBufferSizeString.c_str(), sendBufferSizeString.size(), 0);
 	if (iResult == SOCKET_ERROR) {
 		std::cerr << "send size failed with error: " << WSAGetLastError() << ".\n";
 		closesocket(_sokket);
 		WSACleanup();
 		return 1;
-	}*/
-
+	}
+	
+	//Send contents.
 	while (bytesSent < sendBufferSize) {
 		sendSocketSize = std::min(bytesRemaining, static_cast<std::uint64_t>(sokket::config::bufferSize));
 		buffer.assign(sendBuffer, bytesSent, sendSocketSize);
@@ -37,19 +38,6 @@ int sokket::sendSocket(SOCKET& _sokket, std::string& sendBuffer, std::uint64_t s
 			return 1;
 		}
 
-		/*If packet size is equal to buffer size, send one more packet with a null terminator.
-		if (sendSocketSize == sokket::config::bufferSize)
-		{
-			buffer.clear();
-			iResult = send(_sokket, buffer.c_str(), 1, 0); //\0.
-			if (iResult == SOCKET_ERROR) {
-				std::cerr << "send nullTerminator failed with error: " << WSAGetLastError() << ".\n";
-				closesocket(_sokket);
-				WSACleanup();
-				return 1;
-			}
-		}*/
-
 		bytesSent += sendSocketSize;
 		bytesRemaining -= sendSocketSize;
 	}
@@ -62,48 +50,51 @@ int sokket::sendSocket(SOCKET& _sokket, std::string& sendBuffer, std::uint64_t s
 	return 0;
 }
 
-int sokket::receiveSocket(SOCKET& _sokket, std::string& receivedInformation) {
-	bool connectionEnded {false};
-
-	char receiveBuffer[sokket::config::bufferSize + 1];
-
-	std::uint64_t packageSize {};
+int sokket::receiveSocket(SOCKET& _sokket, std::string& receivedInformation) {	
+	char receiveBuffer[sokket::config::bufferSize + 1];	
+	char quit {};
 	int iResult {};
 	int iResultSize {};
+	std::uint64_t contentsSize {};
+	std::uint64_t bytesReceived {};
+	bool connectionEnded {false};
+	bool receiveSize {true}; //The first packet is the size of the contents.
 
 	do {
-		/*
-		iResultSize = recv(_sokket, reinterpret_cast<char*>(ntohll(packageSize)), sokket::config::bufferSize, 0);
-		if (iResult > 0) {
-			std::cout << "sçdk";
-			std::cout << packageSize;
-		}
-
-		else if (iResult < 0) {
-			std::cerr << "size recv failed with error: " << WSAGetLastError() << ".\n";
-			closesocket(_sokket);
-			WSACleanup();
-			return 1;
-		} */
-
 		iResult = recv(_sokket, receiveBuffer, sokket::config::bufferSize + 1, 0);
 		if (iResult > 0) {
-			connectionEnded = false;
+			if (receiveSize) {
+				receiveBuffer[iResult] = '\0';
 
-			if (receiveBuffer[iResult - 1] == '\n') {
-				receiveBuffer[iResult - 1] = '\0';
+				receiveSize = false;
+				contentsSize = atoi(receiveBuffer);
 			}
-			
-			receiveBuffer[iResult] = '\0';
+			else {
+				connectionEnded = false;
 
-			receivedInformation.append(receiveBuffer);
+				if (receiveBuffer[iResult - 1] == '\n') {
+					receiveBuffer[iResult - 1] = '\0';
+				}
+
+				receiveBuffer[iResult] = '\0';
+
+				bytesReceived += iResult;
+				receivedInformation.append(receiveBuffer);
+			}
 		}
 
 		//Temporary because client closes automatically.
-		else if (iResult == 0 && !connectionEnded) {;
-			std::cout << receivedInformation;
+		else if (iResult == 0 || !connectionEnded) {
+			if (bytesReceived != contentsSize) {
+				std::cout << "Error: Received " << bytesReceived << " bytes but " << contentsSize << " bytes were sent.\n";
+			}
+
+			std::cout << bytesReceived << '\n' << contentsSize << '\n';
 			connectionEnded = true;
-			system("pause"); //Temporary for debugging.
+			receiveSize = true;
+
+			std::cout << receivedInformation;
+			std::cin >> quit;
 		}
 
 		else if (iResult < 0) {
@@ -112,7 +103,7 @@ int sokket::receiveSocket(SOCKET& _sokket, std::string& receivedInformation) {
 			WSACleanup();
 			return 1;
 		}
-	} while (iResult > 0 || iResult == 0);
+	} while (quit != 'q');
 	
 	return 0;
 }
@@ -135,22 +126,10 @@ int sokket::shutdownSocket(SOCKET& _sokket) {
 }
 
 int main(int argc, char* argv[]) {
-	//512 a.
-	std::string test {"oioi"};
-	std::string receiveBufferString{};
 	bool isClient {false};
+	std::string test {"oioioioi"};
+	std::string receiveBufferString{};	
 	SOCKET sokket {INVALID_SOCKET};
-
-	/*if (argc != 4)
-	{
-		std::cout << "Usage: sokket [ip address] [port number] [c for client, s for server]\n";
-		return -1;
-	}
-	else
-	{
-		sokket::config::port = argv[2];
-		sokket::config::address = argv[3];
-	} */
 
 	if (isClient) {
 		sokket::client::setupSocket(sokket);
@@ -162,6 +141,7 @@ int main(int argc, char* argv[]) {
 	}
 	else {
 		sokket::server::setupSocket(sokket);
+
 		sokket::receiveSocket(sokket, receiveBufferString);
 		sokket::shutdownSocket(sokket);
 	}
