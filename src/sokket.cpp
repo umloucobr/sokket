@@ -126,6 +126,10 @@ int sokket::shutdownSocket(SOCKET& _sokket) {
 }
 
 int main(int argc, char* argv[]) {
+#ifdef _WIN32
+	setlocale(LC_ALL, ""); //For some reason, Windows terminal will not output UTF-8 characters without this function.
+#endif // _WIN32
+
 	bool isClient {false};
 	std::string test {"oioioioi"};
 	std::string receiveBufferString{};	
