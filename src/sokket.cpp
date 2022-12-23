@@ -4,7 +4,7 @@
 
 extern std::string sokket::config::port {"27015"};
 extern std::string sokket::config::address {"localhost"};
-extern const int sokket::config::bufferSize {4};
+extern const int sokket::config::bufferSize {512};
 
 int sokket::sendSocket(SOCKET& _sokket, std::string& sendBuffer, std::uint64_t sendBufferSize) {
 	int iResult {0}; 
@@ -28,7 +28,7 @@ int sokket::sendSocket(SOCKET& _sokket, std::string& sendBuffer, std::uint64_t s
 		sendSocketSize = std::min(bytesRemaining, static_cast<std::uint64_t>(sokket::config::bufferSize));
 		buffer.assign(sendBuffer, bytesSent, sendSocketSize);
 		std::cout << buffer;
-		std::cout << buffer.size();
+		std::cout << buffer.size() << '\n';
 
 		iResult = send(_sokket, buffer.c_str(), sendSocketSize, 0); //\0.
 		if (iResult == SOCKET_ERROR) {
@@ -51,26 +51,26 @@ int sokket::sendSocket(SOCKET& _sokket, std::string& sendBuffer, std::uint64_t s
 }
 
 int sokket::receiveSocket(SOCKET& _sokket, std::string& receivedInformation) {	
-	char receiveBuffer[sokket::config::bufferSize + 1];	
+	char receiveBuffer[sokket::config::bufferSize + 1]; //1 more space for a null terminator if necessary.	
 	char quit {};
 	int iResult {};
-	int iResultSize {};
 	std::uint64_t contentsSize {};
 	std::uint64_t bytesReceived {};
-	bool connectionEnded {false};
+	bool packetEnd {false};
 	bool receiveSize {true}; //The first packet is the size of the contents.
 
 	do {
 		iResult = recv(_sokket, receiveBuffer, sokket::config::bufferSize + 1, 0);
 		if (iResult > 0) {
+			//The first packet is always the total size in bytes of the contents, so this receive the size.
 			if (receiveSize) {
 				receiveBuffer[iResult] = '\0';
 
 				receiveSize = false;
-				contentsSize = atoi(receiveBuffer);
+				contentsSize = atoi(receiveBuffer); //Transform contents size to a 64 bits unsigned integer because you can only send and receive a const char* buffer.
 			}
 			else {
-				connectionEnded = false;
+				packetEnd = false;
 
 				if (receiveBuffer[iResult - 1] == '\n') {
 					receiveBuffer[iResult - 1] = '\0';
@@ -81,19 +81,22 @@ int sokket::receiveSocket(SOCKET& _sokket, std::string& receivedInformation) {
 				bytesReceived += iResult;
 				receivedInformation.append(receiveBuffer);
 			}
+
+			if (bytesReceived == contentsSize)
+			{   
+				bytesReceived = 0;
+				iResult = 0;
+				receiveSize = true;
+				std::cout << receivedInformation << "    S: " << contentsSize << '\n';
+				receivedInformation = "";
+			}
 		}
 
 		//Temporary because client closes automatically.
-		else if (iResult == 0 || !connectionEnded) {
-			if (bytesReceived != contentsSize) {
-				std::cout << "Error: Received " << bytesReceived << " bytes but " << contentsSize << " bytes were sent.\n";
-			}
-
-			std::cout << bytesReceived << '\n' << contentsSize << '\n';
-			connectionEnded = true;
+		else if (iResult == 0 || !packetEnd) {
+			packetEnd = true;
 			receiveSize = true;
 
-			std::cout << receivedInformation;
 			std::cin >> quit;
 		}
 
@@ -131,22 +134,29 @@ int main(int argc, char* argv[]) {
 #endif // _WIN32
 
 	bool isClient {false};
-	std::string test {"oioioioi"};
-	std::string receiveBufferString{};	
+	std::string receiveString{};	
 	SOCKET sokket {INVALID_SOCKET};
+
+	std::string a{};
 
 	if (isClient) {
 		sokket::client::setupSocket(sokket);
 
-		std::uint64_t size {test.size()};
-		sokket::sendSocket(sokket, test, size);
+		//std::uint64_t size {test.size()};
+		//sokket::sendSocket(sokket, test, size);
+		while (a != "q")
+		{
+			std::getline(std::cin, a);
+			sokket::sendSocket(sokket, a, a.size());
+		}
+
 		sokket::shutdownSocket(sokket);
 		system("pause"); //Temporary for debugging.
 	}
 	else {
 		sokket::server::setupSocket(sokket);
 
-		sokket::receiveSocket(sokket, receiveBufferString);
+		sokket::receiveSocket(sokket, receiveString);
 		sokket::shutdownSocket(sokket);
 	}
 
