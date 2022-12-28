@@ -2,6 +2,6 @@
 
 project ("sokket")
 
-add_executable (sokket "sokket.cpp" "sokket.hpp"  "client.cpp" "server.cpp")
+add_executable (sokket "sokket.cpp" "sokket.hpp"  "client.cpp" "server.cpp" "commandlineparser.cpp")
 
 set_property(TARGET sokket PROPERTY CXX_STANDARD 20)

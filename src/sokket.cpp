@@ -1,10 +1,11 @@
 ﻿#include "sokket.hpp"
 #include "client.hpp"
 #include "server.hpp"
+#include "commandlineparser.hpp"
 
 extern std::string sokket::config::port {"27015"};
 extern std::string sokket::config::address {"localhost"};
-extern const int sokket::config::bufferSize {512};
+extern const int sokket::config::bufferSize {1400};
 
 int sokket::sendSocket(SOCKET& _sokket, std::string& sendBuffer, std::uint64_t sendBufferSize) {
 	int iResult {0}; 
@@ -44,16 +45,16 @@ int sokket::sendSocket(SOCKET& _sokket, std::string& sendBuffer, std::uint64_t s
 
 	if (bytesSent != sendBufferSize)
 	{
-		std::cout << "Erorr! Sent " << bytesSent << " but total number of bytes is " << sendBufferSize << ".\n";
+		std::cout << "Error! Sent " << bytesSent << " but total number of bytes is " << sendBufferSize << ".\n";
 	}
 
 	return 0;
 }
 
-int sokket::receiveSocket(SOCKET& _sokket, std::string& receivedInformation) {	
+int sokket::receiveSocket(SOCKET& _sokket, std::string& receivedInformation, bool& disconnect) {	
 	char receiveBuffer[sokket::config::bufferSize + 1]; //1 more space for a null terminator if necessary.	
 	char quit {};
-	int iResult {};
+	int iResult {0};
 	std::uint64_t contentsSize {};
 	std::uint64_t bytesReceived {};
 	bool packetEnd {false};
@@ -82,22 +83,24 @@ int sokket::receiveSocket(SOCKET& _sokket, std::string& receivedInformation) {
 				receivedInformation.append(receiveBuffer);
 			}
 
-			if (bytesReceived == contentsSize)
-			{   
+			if (bytesReceived == contentsSize) {   
 				bytesReceived = 0;
 				iResult = 0;
 				receiveSize = true;
 				std::cout << receivedInformation << "    S: " << contentsSize << '\n';
+
+				if (receivedInformation == sokket::clparser::config::quitCombination) //If other user send the quit command, disconnect = true so sokket::clparser can disconnect too.
+				{
+					disconnect = true;
+				}
+
 				receivedInformation = "";
 			}
 		}
 
-		//Temporary because client closes automatically.
 		else if (iResult == 0 || !packetEnd) {
 			packetEnd = true;
 			receiveSize = true;
-
-			std::cin >> quit;
 		}
 
 		else if (iResult < 0) {
@@ -106,13 +109,13 @@ int sokket::receiveSocket(SOCKET& _sokket, std::string& receivedInformation) {
 			WSACleanup();
 			return 1;
 		}
-	} while (quit != 'q');
+	} while (iResult > 0);
 	
 	return 0;
 }
 
 int sokket::shutdownSocket(SOCKET& _sokket) {
-	int iResult;
+	int iResult {0};
 
 	iResult = shutdown(_sokket, SD_SEND);
 	if (iResult == SOCKET_ERROR) {
@@ -130,34 +133,41 @@ int sokket::shutdownSocket(SOCKET& _sokket) {
 
 int main(int argc, char* argv[]) {
 #ifdef _WIN32
-	setlocale(LC_ALL, ""); //For some reason, Windows terminal will not output UTF-8 characters without this function.
+	setlocale(LC_ALL, ""); //For some reason Windows terminal will not output UTF-8 characters without this function.
 #endif // _WIN32
 
 	bool isClient {false};
 	std::string receiveString{};	
 	SOCKET sokket {INVALID_SOCKET};
 
-	std::string a{};
-
 	if (isClient) {
-		sokket::client::setupSocket(sokket);
+		sokket::client::setupSocket(sokket); //sokket::shutdownSocket is inside clparser. Sorry.
 
-		//std::uint64_t size {test.size()};
-		//sokket::sendSocket(sokket, test, size);
-		while (a != "q")
+		int result {sokket::clparser::init(sokket, receiveString)}; //sokket::clparser::init returns 0 if there were no errors, so you can shutdown correctly.
+
+		if (result == 0)
 		{
-			std::getline(std::cin, a);
-			sokket::sendSocket(sokket, a, a.size());
+			return 0;
+		}
+		else
+		{
+			return 1;
 		}
 
-		sokket::shutdownSocket(sokket);
-		system("pause"); //Temporary for debugging.
 	}
 	else {
 		sokket::server::setupSocket(sokket);
 
-		sokket::receiveSocket(sokket, receiveString);
-		sokket::shutdownSocket(sokket);
+		int result {sokket::clparser::init(sokket, receiveString)}; //sokket::clparser::init returns 0 if there were no errors, so you can shutdown correctly.
+
+		if (result == 0)
+		{
+			return 0;
+		}
+		else
+		{
+			return 1;
+		}
 	}
 
 	return 0;

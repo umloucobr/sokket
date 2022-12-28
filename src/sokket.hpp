@@ -7,6 +7,8 @@
 #include <cstdint>
 #include <algorithm>
 #include <memory>
+#include <thread>
+#include <atomic>
 
 #ifdef _WIN32
 //windows.h messes with std::min and std::max.
@@ -28,7 +30,7 @@ namespace sokket {
 
 	int shutdownSocket (SOCKET& _sokket);
 	int sendSocket (SOCKET& _sokket, std::string& sendBuffer, std::uint64_t sendBufferSize);
-	int receiveSocket (SOCKET& _sokket, std::string& receivedInformation);
+	int receiveSocket (SOCKET& _sokket, std::string& receivedInformation, bool& disconnect);
 }
 
 #endif //SOKKET_HPP
