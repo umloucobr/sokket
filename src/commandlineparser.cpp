@@ -8,12 +8,13 @@ void sokket::clparser::readConsole(SOCKET& _sokket, std::atomic<bool>& stopProgr
 
 	while (!stopProgram.load())
 	{
-		if (!stopProgram.load()) //Without this the thread won't join the main one.
+		if (stopProgram.load()) //Without this the thread won't join the main one.
 		{
 
 		}
 		else
 		{
+			//std::cout << "> ";
 			std::getline(std::cin, input);
 
 			if (input == sokket::clparser::config::quitCombination)
