@@ -28,8 +28,6 @@ int sokket::sendSocket(SOCKET& _sokket, std::string& sendBuffer, std::uint64_t s
 	while (bytesSent < sendBufferSize) {
 		sendSocketSize = std::min(bytesRemaining, static_cast<std::uint64_t>(sokket::config::bufferSize));
 		buffer.assign(sendBuffer, bytesSent, sendSocketSize);
-		std::cout << buffer;
-		std::cout << buffer.size() << '\n';
 
 		iResult = send(_sokket, buffer.c_str(), sendSocketSize, 0); //\0.
 		if (iResult == SOCKET_ERROR) {
@@ -87,10 +85,11 @@ int sokket::receiveSocket(SOCKET& _sokket, std::string& receivedInformation, boo
 				bytesReceived = 0;
 				iResult = 0;
 				receiveSize = true;
-				std::cout << receivedInformation << "    S: " << contentsSize << '\n';
+				std::cout << '\b' << '\b';
+				std::cout << receivedInformation << "    S: " << contentsSize << '\n' << ">";
 
-				if (receivedInformation == sokket::clparser::config::quitCombination) //If other user send the quit command, disconnect = true so sokket::clparser can disconnect too.
-				{
+				//If other user send the quit command, disconnect = true so sokket::clparser can disconnect too.
+				if (receivedInformation == sokket::clparser::config::quitCombination) { 
 					disconnect = true;
 				}
 
@@ -133,7 +132,7 @@ int sokket::shutdownSocket(SOCKET& _sokket) {
 
 int main(int argc, char* argv[]) {
 #ifdef _WIN32
-	setlocale(LC_ALL, ""); //For some reason Windows terminal will not output UTF-8 characters without this function.
+	_setmode(_fileno(stdin), _O_WTEXT); //Correctly get UTF-8 characters.
 #endif // _WIN32
 
 	bool isClient {false};
@@ -144,13 +143,11 @@ int main(int argc, char* argv[]) {
 		sokket::client::setupSocket(sokket); //sokket::shutdownSocket is inside clparser. Sorry.
 
 		int result {sokket::clparser::init(sokket, receiveString)}; //sokket::clparser::init returns 0 if there were no errors, so you can shutdown correctly.
-
-		if (result == 0)
-		{
+		
+		if (result == 0) {
 			return 0;
 		}
-		else
-		{
+		else {
 			return 1;
 		}
 
@@ -160,12 +157,10 @@ int main(int argc, char* argv[]) {
 
 		int result {sokket::clparser::init(sokket, receiveString)}; //sokket::clparser::init returns 0 if there were no errors, so you can shutdown correctly.
 
-		if (result == 0)
-		{
+		if (result == 0) {
 			return 0;
 		}
-		else
-		{
+		else {
 			return 1;
 		}
 	}

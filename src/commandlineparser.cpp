@@ -4,44 +4,38 @@ extern std::string sokket::clparser::config::quitCombination {":q"};
 
 //May not be thread safe for some time, sorry.
 void sokket::clparser::readConsole(SOCKET& _sokket, std::atomic<bool>& stopProgram, bool& errorCode) {
-	std::string input{};
+	std::wstring wideInput{};
 
-	while (!stopProgram.load())
-	{
-		if (stopProgram.load()) //Without this the thread won't join the main one.
-		{
+	while (!stopProgram.load()) {
+		std::cout << "> ";
+		std::getline(std::wcin, wideInput);
 
+		std::string input{input.begin(), input.end()};
+
+		if (input == sokket::clparser::config::quitCombination) {
+			errorCode = false;
+			stopProgram.store(true);
+
+			int result{ sokket::sendSocket(_sokket, sokket::clparser::config::quitCombination, 2) };
+
+			if (result != 0) {
+				errorCode = true;
+			}
+
+			sokket::shutdownSocket(_sokket);
 		}
-		else
-		{
-			//std::cout << "> ";
-			std::getline(std::cin, input);
+		else {
+			int result{};
+			
+			if (!stopProgram.load()) {
+				result = { sokket::sendSocket(_sokket, input, input.size()) };
+			}
 
-			if (input == sokket::clparser::config::quitCombination)
-			{
-				errorCode = false;
+			if (result != 0) {
+				errorCode = true;
 				stopProgram.store(true);
-
-				int result{ sokket::sendSocket(_sokket, sokket::clparser::config::quitCombination, 2) };
-
-				if (result != 0)
-				{
-					errorCode = true;
-				}
-
-				sokket::shutdownSocket(_sokket);
 			}
-			else
-			{
-				int result{ sokket::sendSocket(_sokket, input, input.size()) };
-
-				if (result != 0)
-				{
-					errorCode = true;
-					stopProgram.store(true);
-				}
-			}
-		}		
+		}
 	}
 }
 
@@ -53,16 +47,13 @@ int sokket::clparser::init(SOCKET& _sokket, std::string& receivedInformation) {
 	std::atomic<bool> stopProgram {false};
 	std::thread readConsoleThread(sokket::clparser::readConsole, std::ref(_sokket), std::ref(stopProgram), std::ref(errorCode));
 
-	while (!stopProgram.load())
-	{
+	while (!stopProgram.load()) {
 		result = sokket::receiveSocket(_sokket, receivedInformation, disconnect);
-		if (result != 0)
-		{
+		if (result != 0) {
 			errorCode = true;
 			stopProgram.store(true);
 		}
-		if (disconnect)
-		{
+		if (disconnect) {
 			errorCode = false;
 			stopProgram.store(true);
 			sokket::shutdownSocket(_sokket);
@@ -73,12 +64,10 @@ int sokket::clparser::init(SOCKET& _sokket, std::string& receivedInformation) {
 	stopProgram.store(true);
 	readConsoleThread.join();
 	
-	if (!errorCode)
-	{
+	if (!errorCode) {
 		return 0;
 	}
-	else
-	{
+	else {
 		return 1;
 	}
 }
