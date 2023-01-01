@@ -30,8 +30,8 @@ namespace sokket {
 	}
 
 	int shutdownSocket (SOCKET& _sokket);
-	int sendSocket (SOCKET& _sokket, std::string& sendBuffer, std::uint64_t sendBufferSize);
-	int receiveSocket (SOCKET& _sokket, std::string& receivedInformation, bool& disconnect);
+	int sendSocket (SOCKET& _sokket, std::string& sendBuffer, std::uint64_t sendBufferSize, std::atomic<bool>& fileModeBool);
+	int receiveSocket (SOCKET& _sokket, std::string& receivedInformation, bool& disconnect, std::atomic<bool>& fileModeBool);
 }
 
 #endif //SOKKET_HPP

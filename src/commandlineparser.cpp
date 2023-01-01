@@ -1,9 +1,12 @@
 #include "commandlineparser.hpp"
 
 extern std::string sokket::clparser::config::quitCombination {":q"};
+extern std::string sokket::clparser::config::fileMode {":f"};
+extern std::string sokket::clparser::config::messageMode {":m"};
+extern std::atomic<bool> sokket::clparser::config::fileModeBool {false};
 
 //May not be thread safe for some time, sorry.
-void sokket::clparser::readConsole(SOCKET& _sokket, std::atomic<bool>& stopProgram, bool& errorCode) {
+void sokket::clparser::readConsole(SOCKET& _sokket, std::atomic<bool>& stopProgram, bool& errorCode, std::atomic<bool>& fileModeBool) {
 	std::wstring wideInput{};
 
 	while (!stopProgram.load()) {
@@ -16,7 +19,7 @@ void sokket::clparser::readConsole(SOCKET& _sokket, std::atomic<bool>& stopProgr
 			errorCode = false;
 			stopProgram.store(true);
 
-			int result{ sokket::sendSocket(_sokket, sokket::clparser::config::quitCombination, 2) };
+			int result {sokket::sendSocket(_sokket, sokket::clparser::config::quitCombination, 2, fileModeBool)};
 
 			if (result != 0) {
 				errorCode = true;
@@ -24,11 +27,17 @@ void sokket::clparser::readConsole(SOCKET& _sokket, std::atomic<bool>& stopProgr
 
 			sokket::shutdownSocket(_sokket);
 		}
+		else if (input == sokket::clparser::config::fileMode) {
+			fileModeBool.store(true);
+		}
+		else if (input == sokket::clparser::config::messageMode) {
+			fileModeBool.store(false);
+		}
 		else {
 			int result{};
 			
 			if (!stopProgram.load()) {
-				result = { sokket::sendSocket(_sokket, input, input.size()) };
+				result = {sokket::sendSocket(_sokket, input, input.size(), fileModeBool)};
 			}
 
 			if (result != 0) {
@@ -45,10 +54,10 @@ int sokket::clparser::init(SOCKET& _sokket, std::string& receivedInformation) {
 
 	bool errorCode {false}; //Error code for the sokket::clparser::readConsole thread. May need to be a std::atomic<bool> in the future.
 	std::atomic<bool> stopProgram {false};
-	std::thread readConsoleThread(sokket::clparser::readConsole, std::ref(_sokket), std::ref(stopProgram), std::ref(errorCode));
+	std::thread readConsoleThread(sokket::clparser::readConsole, std::ref(_sokket), std::ref(stopProgram), std::ref(errorCode), std::ref(sokket::clparser::config::fileModeBool));
 
 	while (!stopProgram.load()) {
-		result = sokket::receiveSocket(_sokket, receivedInformation, disconnect);
+		result = sokket::receiveSocket(_sokket, receivedInformation, disconnect, sokket::clparser::config::fileModeBool);
 		if (result != 0) {
 			errorCode = true;
 			stopProgram.store(true);

@@ -7,7 +7,7 @@ extern std::string sokket::config::port {"27015"};
 extern std::string sokket::config::address {"localhost"};
 extern const int sokket::config::bufferSize {1400};
 
-int sokket::sendSocket(SOCKET& _sokket, std::string& sendBuffer, std::uint64_t sendBufferSize) {
+int sokket::sendSocket(SOCKET& _sokket, std::string& sendBuffer, std::uint64_t sendBufferSize, std::atomic<bool>& fileModeBool) {
 	int iResult {0}; 
 	std::uint64_t bytesRemaining {sendBufferSize}; //Used on std::min, making a copy because I need to decrease it.
 	std::uint64_t bytesSent {0};
@@ -49,7 +49,7 @@ int sokket::sendSocket(SOCKET& _sokket, std::string& sendBuffer, std::uint64_t s
 	return 0;
 }
 
-int sokket::receiveSocket(SOCKET& _sokket, std::string& receivedInformation, bool& disconnect) {	
+int sokket::receiveSocket(SOCKET& _sokket, std::string& receivedInformation, bool& disconnect, std::atomic<bool>& fileModeBool) {
 	char receiveBuffer[sokket::config::bufferSize + 1]; //1 more space for a null terminator if necessary.	
 	char quit {};
 	int iResult {0};
@@ -91,6 +91,12 @@ int sokket::receiveSocket(SOCKET& _sokket, std::string& receivedInformation, boo
 				//If other user send the quit command, disconnect = true so sokket::clparser can disconnect too.
 				if (receivedInformation == sokket::clparser::config::quitCombination) { 
 					disconnect = true;
+				}
+				else if (receivedInformation == sokket::clparser::config::fileMode) {
+					fileModeBool.store(true);
+				}
+				else if (receivedInformation == sokket::clparser::config::messageMode) {
+					fileModeBool.store(false);
 				}
 
 				receivedInformation = "";
@@ -150,10 +156,9 @@ int main(int argc, char* argv[]) {
 		else {
 			return 1;
 		}
-
 	}
 	else {
-		sokket::server::setupSocket(sokket);
+		sokket::server::setupSocket(sokket); //sokket::shutdownSocket is inside clparser. Sorry.
 
 		int result {sokket::clparser::init(sokket, receiveString)}; //sokket::clparser::init returns 0 if there were no errors, so you can shutdown correctly.
 
