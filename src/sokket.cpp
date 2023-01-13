@@ -7,7 +7,7 @@ extern std::string sokket::config::port {"27015"};
 extern std::string sokket::config::address {"localhost"};
 extern const int sokket::config::bufferSize {1400};
 
-int sokket::sendSocket(SOCKET& _sokket, std::string& sendBuffer, std::uint64_t sendBufferSize, std::atomic<bool>& fileModeBool) {
+int sokket::sendSocket(SOCKET& _sokket, std::string& sendBuffer, std::uint64_t sendBufferSize) {
 	int iResult {0}; 
 	std::uint64_t bytesRemaining {sendBufferSize}; //Used on std::min, making a copy because I need to decrease it.
 	std::uint64_t bytesSent {0};
@@ -48,6 +48,31 @@ int sokket::sendSocket(SOCKET& _sokket, std::string& sendBuffer, std::uint64_t s
 
 	return 0;
 }
+
+//Input will come as a std::string with "Name of the file" "Path to the file".
+int sokket::sendSocketFile(SOCKET& _sokket, std::string& input) {
+	int iResult {0};
+	std::string tempString{};
+	std::string fileName{};
+	std::string filePath{};
+
+	for (auto c: input)
+	{
+		if (c == ' ')
+		{
+			fileName = tempString;
+			tempString = "";
+		}
+		else
+		{
+			tempString += c;
+		}
+	}
+
+	filePath = tempString;
+
+	return 0;
+};
 
 int sokket::receiveSocket(SOCKET& _sokket, std::string& receivedInformation, bool& disconnect, std::atomic<bool>& fileModeBool) {
 	char receiveBuffer[sokket::config::bufferSize + 1]; //1 more space for a null terminator if necessary.	
@@ -98,7 +123,6 @@ int sokket::receiveSocket(SOCKET& _sokket, std::string& receivedInformation, boo
 				else if (receivedInformation == sokket::clparser::config::messageMode) {
 					fileModeBool.store(false);
 				}
-
 				receivedInformation = "";
 			}
 		}
