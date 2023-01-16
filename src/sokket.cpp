@@ -3,8 +3,6 @@
 #include "server.hpp"
 #include "commandlineparser.hpp"
 
-extern std::string sokket::config::port {"27015"};
-extern std::string sokket::config::address {"localhost"};
 extern const int sokket::config::bufferSize {1400};
 
 int sokket::WSACleanupWrapper() {
@@ -155,7 +153,7 @@ int sokket::sendSocketFile(SOCKET& _sokket, std::string& input) {
 	return 0;
 }
 
-int sokket::receiveSocket(SOCKET& _sokket, std::string& receivedInformation, bool& disconnect) {
+int sokket::receiveSocket(SOCKET& _sokket, bool& disconnect) {
 	using binary_data = std::vector<std::uint8_t>;
 
 	bool packetEnd {false};
@@ -168,6 +166,7 @@ int sokket::receiveSocket(SOCKET& _sokket, std::string& receivedInformation, boo
 	std::uint64_t contentsSize {};
 	std::uint64_t bytesReceived {};
 	std::uint64_t receivedInformationFileIterator {};
+	std::string receivedInformation{};
 	std::string fileName{"default.txt"};
 	binary_data receivedInformationFile {};
 
@@ -277,43 +276,6 @@ int sokket::shutdownSocket(SOCKET& _sokket) {
 
 	closesocket(_sokket);
 	WSACleanupWrapper();
-
-	return 0;
-}
-
-int main(int argc, char* argv[]) {
-#ifdef _WIN32
-	_setmode(_fileno(stdin), _O_WTEXT); //Correctly get UTF-8 characters with this obscure function.
-#endif // _WIN32
-
-	bool isClient {false};
-	std::string receiveString{};	
-	SOCKET sokket {INVALID_SOCKET};
-
-	if (isClient) {
-		sokket::client::setupSocket(sokket); //sokket::shutdownSocket is inside clparser. Sorry.
-
-		int result {sokket::clparser::init(sokket, receiveString)}; //sokket::clparser::init returns 0 if there were no errors, so you can shutdown correctly.
-		
-		if (result == 0) {
-			return 0;
-		}
-		else {
-			return 1;
-		}
-	}
-	else {
-		sokket::server::setupSocket(sokket); //sokket::shutdownSocket is inside clparser. Sorry.
-
-		int result {sokket::clparser::init(sokket, receiveString)}; //sokket::clparser::init returns 0 if there were no errors, so you can shutdown correctly.
-
-		if (result == 0) {
-			return 0;
-		}
-		else {
-			return 1;
-		}
-	}
 
 	return 0;
 }

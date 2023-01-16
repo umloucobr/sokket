@@ -1,6 +1,6 @@
 #include "server.hpp"
 
-int sokket::server::setupSocket(SOCKET& sokket) {
+int sokket::server::setupSocket(SOCKET& sokket) noexcept {
 #ifdef _WIN32
     WSADATA wsaData;
         int iResulta{ WSAStartup(MAKEWORD(2, 2), &wsaData) };

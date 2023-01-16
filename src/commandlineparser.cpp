@@ -48,7 +48,7 @@ void sokket::clparser::readConsole(SOCKET& _sokket, std::atomic<bool>& stopProgr
 	}
 }
 
-int sokket::clparser::init(SOCKET& _sokket, std::string& receivedInformation) {
+int sokket::clparser::init(SOCKET& _sokket) {
 	bool disconnect {false}; //If the other user disconnected, disconnect will be true.
 	int result {0}; //Result from sokket::receiveSocket.
 
@@ -57,7 +57,7 @@ int sokket::clparser::init(SOCKET& _sokket, std::string& receivedInformation) {
 	std::thread readConsoleThread(sokket::clparser::readConsole, std::ref(_sokket), std::ref(stopProgram), std::ref(errorCode));
 
 	while (!stopProgram.load()) {
-		result = sokket::receiveSocket(_sokket, receivedInformation, disconnect);
+		result = sokket::receiveSocket(_sokket, disconnect);
 		if (result != 0) {
 			errorCode = true;
 			stopProgram.store(true);

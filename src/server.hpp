@@ -5,7 +5,7 @@
 
 namespace sokket {
 	namespace server {
-		int setupSocket(SOCKET& sokket);
+		int setupSocket(SOCKET& sokket) noexcept;
 	}
 }
 #endif //SERVER_HPP

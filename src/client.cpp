@@ -1,9 +1,9 @@
 #include "client.hpp"
 
-int sokket::client::setupSocket(SOCKET& sokket) {
+int sokket::client::setupSocket(SOCKET& sokket, bool autoMode) noexcept {
 #ifdef _WIN32
     WSADATA wsaData;
-    int iResulta{ WSAStartup(MAKEWORD(2, 2), &wsaData) };
+    int iResulta {WSAStartup(MAKEWORD(2, 2), &wsaData)};
 
     if (iResulta != 0) {
         std::cout << "WSAStartup failed: " << iResulta << "\n";
@@ -53,7 +53,9 @@ int sokket::client::setupSocket(SOCKET& sokket) {
 
     if (connectSocket == INVALID_SOCKET) {
         std::cerr << "Unable to connect to server!\n";
-        WSACleanupWrapper();
+        if (!autoMode) {
+            WSACleanupWrapper();
+        }      
         return 1;
     }
     sokket = connectSocket;

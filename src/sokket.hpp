@@ -36,7 +36,7 @@ namespace sokket {
 	int shutdownSocket (SOCKET& _sokket);
 	int sendSocket (SOCKET& _sokket, std::string& sendBuffer, std::uint64_t sendBufferSize);
 	int sendSocketFile(SOCKET& _sokket, std::string& input);
-	int receiveSocket (SOCKET& _sokket, std::string& receivedInformation, bool& disconnect);
+	int receiveSocket (SOCKET& _sokket, bool& disconnect);
 }
 
 #endif //SOKKET_HPP

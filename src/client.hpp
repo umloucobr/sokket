@@ -5,7 +5,7 @@
 
 namespace sokket {
 	namespace client {
-		int setupSocket (SOCKET& sokket);
+		int setupSocket (SOCKET& sokket, bool autoMode) noexcept;
 	}
 }
 #endif //CLIENT_HPP

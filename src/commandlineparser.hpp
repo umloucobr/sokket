@@ -11,7 +11,7 @@ namespace sokket {
 			extern std::atomic<bool> fileModeBool;
 		}
 		
-		int init(SOCKET& _sokket, std::string& receivedInformation);
+		int init(SOCKET& _sokket);
 		void readConsole(SOCKET& _sokket, std::atomic<bool>& stopProgram, bool& errorCode);
 	}
 }
