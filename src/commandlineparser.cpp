@@ -4,7 +4,6 @@ extern std::string sokket::clparser::config::quitCombination {":q"};
 extern std::string sokket::clparser::config::fileMode {":f"};
 extern std::atomic<bool> sokket::clparser::config::fileModeBool {false};
 
-//May not be thread safe for some time, sorry. Some mutexes would help.
 void sokket::clparser::readConsole(SOCKET& _sokket, std::atomic<bool>& stopProgram, bool& errorCode) {
 	std::wstring wideInput{};
 

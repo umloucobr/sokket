@@ -32,6 +32,7 @@ namespace sokket {
 		extern const int bufferSize;
 	}
 
+	int WSACleanupWrapper();
 	int shutdownSocket (SOCKET& _sokket);
 	int sendSocket (SOCKET& _sokket, std::string& sendBuffer, std::uint64_t sendBufferSize);
 	int sendSocketFile(SOCKET& _sokket, std::string& input);

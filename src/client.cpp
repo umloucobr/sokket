@@ -24,38 +24,38 @@ int sokket::client::setupSocket(SOCKET& sokket) {
     int iResult {getaddrinfo(sokket::config::address.c_str(), sokket::config::port.c_str(), &hints, &result)};
     if (iResult != 0) {
         std::cerr << "getaddrinfo failed: " << iResult << ".\n";
-        WSACleanup();
+        WSACleanupWrapper();
         return 1;
     }
 
-    // Create a SOCKET for connecting to server
-    SOCKET ConnectSocket {INVALID_SOCKET};
+    // Create a SOCKET for connecting to server.
+    SOCKET connectSocket {INVALID_SOCKET};
 
     for (ptr = result; ptr != NULL; ptr=ptr->ai_next)
     {
-        ConnectSocket = socket(ptr->ai_family, ptr->ai_socktype, ptr->ai_protocol);
-        if (ConnectSocket == INVALID_SOCKET) {
+        connectSocket = socket(ptr->ai_family, ptr->ai_socktype, ptr->ai_protocol);
+        if (connectSocket == INVALID_SOCKET) {
             std::cerr << "Error at socket(): " << WSAGetLastError() << ".\n";
-            WSACleanup();
+            WSACleanupWrapper();
             return 1;
         }
 
         // Connect to server.
-        iResult = connect(ConnectSocket, ptr->ai_addr, static_cast<int>(ptr->ai_addrlen));
+        iResult = connect(connectSocket, ptr->ai_addr, static_cast<int>(ptr->ai_addrlen));
         if (iResult == SOCKET_ERROR) {
-            closesocket(ConnectSocket);
-            ConnectSocket = INVALID_SOCKET;
+            closesocket(connectSocket);
+            connectSocket = INVALID_SOCKET;
             continue;
         }
         break;
     }
     freeaddrinfo(result);
 
-    if (ConnectSocket == INVALID_SOCKET) {
+    if (connectSocket == INVALID_SOCKET) {
         std::cerr << "Unable to connect to server!\n";
-        WSACleanup();
+        WSACleanupWrapper();
         return 1;
     }
-    sokket = ConnectSocket;
+    sokket = connectSocket;
     return 0;
 }

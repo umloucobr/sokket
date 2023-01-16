@@ -7,6 +7,13 @@ extern std::string sokket::config::port {"27015"};
 extern std::string sokket::config::address {"localhost"};
 extern const int sokket::config::bufferSize {1400};
 
+int sokket::WSACleanupWrapper() {
+#ifdef _WIN32
+	WSACleanup();
+#endif // _WIN32
+	return 0;
+}
+
 int sokket::sendSocket(SOCKET& _sokket, std::string& sendBuffer, std::uint64_t sendBufferSize) {
 	int iResult {0}; 
 	std::uint64_t bytesRemaining {sendBufferSize}; //Used on std::min, making a copy because I need to decrease it.
@@ -18,11 +25,11 @@ int sokket::sendSocket(SOCKET& _sokket, std::string& sendBuffer, std::uint64_t s
 	//Basically, if it is a message the size number will begin with a 0, and a 1 for files.
 	totalSize.insert(0, 1, '0');
 	//Send size first.
-	iResult = send(_sokket, totalSize.c_str(), totalSize.size(), 0);
+	iResult = send(_sokket, totalSize.c_str(), static_cast<int>(totalSize.size()), 0);
 	if (iResult == SOCKET_ERROR) {
 		std::cerr << "send size failed with error: " << WSAGetLastError() << ".\n";
 		closesocket(_sokket);
-		WSACleanup();
+		WSACleanupWrapper();
 		return 1;
 	}
 	
@@ -31,11 +38,11 @@ int sokket::sendSocket(SOCKET& _sokket, std::string& sendBuffer, std::uint64_t s
 		sendSocketSize = std::min(bytesRemaining, static_cast<std::uint64_t>(sokket::config::bufferSize));
 		buffer.assign(sendBuffer, bytesSent, sendSocketSize);
 
-		iResult = send(_sokket, buffer.c_str(), sendSocketSize, 0);
+		iResult = send(_sokket, buffer.c_str(), static_cast<int>(sendSocketSize), 0);
 		if (iResult == SOCKET_ERROR) {
 			std::cerr << "send failed with error: " << WSAGetLastError() << ".\n";
 			closesocket(_sokket);
-			WSACleanup();
+			WSACleanupWrapper();
 			return 1;
 		}
 
@@ -100,20 +107,20 @@ int sokket::sendSocketFile(SOCKET& _sokket, std::string& input) {
 		totalSize.insert(0, 1, '1');
 
 		//Send size first.
-		iResult = send(_sokket, totalSize.c_str(), totalSize.size(), 0);
+		iResult = send(_sokket, totalSize.c_str(), static_cast<int>(totalSize.size()), 0);
 		if (iResult == SOCKET_ERROR) {
 			std::cerr << "send size failed with error: " << WSAGetLastError() << ".\n";
 			closesocket(_sokket);
-			WSACleanup();
+			WSACleanupWrapper();
 			return 1;
 		}
 
 		//Send file name.
-		iResult = send(_sokket, fileName.c_str(), fileName.size(), 0);
+		iResult = send(_sokket, fileName.c_str(), static_cast<int>(fileName.size()), 0);
 		if (iResult == SOCKET_ERROR) {
 			std::cerr << "send file name failed with error: " << WSAGetLastError() << ".\n";
 			closesocket(_sokket);
-			WSACleanup();
+			WSACleanupWrapper();
 			return 1;
 		}
 
@@ -129,11 +136,11 @@ int sokket::sendSocketFile(SOCKET& _sokket, std::string& input) {
 				}
 			}
 
-			iResult = send(_sokket, reinterpret_cast<char*>(sendBuffer.data()), sendSocketSize, 0);
+			iResult = send(_sokket, reinterpret_cast<char*>(sendBuffer.data()), static_cast<int>(sendSocketSize), 0);
 			if (iResult == SOCKET_ERROR) {
 				std::cerr << "send failed with error: " << WSAGetLastError() << ".\n";
 				closesocket(_sokket);
-				WSACleanup();
+				WSACleanupWrapper();
 				return 1;
 			}
 
@@ -249,7 +256,7 @@ int sokket::receiveSocket(SOCKET& _sokket, std::string& receivedInformation, boo
 		else if (iResult < 0) {
 			std::cerr << "recv failed with error: " << WSAGetLastError() << ".\n";
 			closesocket(_sokket);
-			WSACleanup();
+			WSACleanupWrapper();
 			return 1;
 		}
 	} while (iResult > 0);
@@ -264,12 +271,12 @@ int sokket::shutdownSocket(SOCKET& _sokket) {
 	if (iResult == SOCKET_ERROR) {
 		std::cerr << "shutdown failed with error: " << WSAGetLastError() << ".\n";
 		closesocket(_sokket);
-		WSACleanup();
+		WSACleanupWrapper();
 		return 1;
 	}
 
 	closesocket(_sokket);
-	WSACleanup();
+	WSACleanupWrapper();
 
 	return 0;
 }

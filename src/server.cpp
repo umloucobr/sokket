@@ -24,51 +24,51 @@ int sokket::server::setupSocket(SOCKET& sokket) {
     int iResult {getaddrinfo(NULL, sokket::config::port.c_str(), &hints, &result)};
     if (iResult != 0) {
         std::cerr << "getaddrinfo failed: " << iResult << ".\n";
-        WSACleanup();
+        WSACleanupWrapper();
         return 1;
     }
 
     //Create a socket for the server to listen to the client.
-    SOCKET ListenSocket = INVALID_SOCKET;
-    ListenSocket = socket(result->ai_family, result->ai_socktype, result->ai_protocol);
-    if (ListenSocket == INVALID_SOCKET) {
+    SOCKET listenSocket = INVALID_SOCKET;
+    listenSocket = socket(result->ai_family, result->ai_socktype, result->ai_protocol);
+    if (listenSocket == INVALID_SOCKET) {
         std::cerr << "Error at socket(): " << WSAGetLastError() << ".\n";
         freeaddrinfo(result);
-        WSACleanup();
+        WSACleanupWrapper();
         return 1;
     }
 
     //Bind socket.
-    iResult = bind(ListenSocket, result->ai_addr, static_cast<int>(result->ai_addrlen));
+    iResult = bind(listenSocket, result->ai_addr, static_cast<int>(result->ai_addrlen));
     if (iResult == SOCKET_ERROR) {
         std::cerr << "bind failed with error: " << WSAGetLastError() << ".\n";
         freeaddrinfo(result);
-        closesocket(ListenSocket);
-        WSACleanup();
+        closesocket(listenSocket);
+        WSACleanupWrapper();
         return 1;
     }
 
     freeaddrinfo(result);
 
     //Listen for connections.
-    if (listen(ListenSocket, SOMAXCONN) == SOCKET_ERROR) {
+    if (listen(listenSocket, SOMAXCONN) == SOCKET_ERROR) {
         std::cerr << "Listen failed with error: " << WSAGetLastError() << ".\n";
-        closesocket(ListenSocket);
-        WSACleanup();
+        closesocket(listenSocket);
+        WSACleanupWrapper();
         return 1;
     }
 
-    SOCKET ClientSocket {INVALID_SOCKET};
+    SOCKET clientSocket {INVALID_SOCKET};
 
     // Accept a client socket.
-    ClientSocket = accept(ListenSocket, NULL, NULL);
-    if (ClientSocket == INVALID_SOCKET) {
+    clientSocket = accept(listenSocket, NULL, NULL);
+    if (clientSocket == INVALID_SOCKET) {
         std::cerr << "accept failed: " << WSAGetLastError() << ".\n";
-        closesocket(ListenSocket);
-        WSACleanup();
+        closesocket(listenSocket);
+        WSACleanupWrapper();
         return 1;
     }
 
-    sokket = ClientSocket;
+    sokket = clientSocket;
     return 0;
 }
