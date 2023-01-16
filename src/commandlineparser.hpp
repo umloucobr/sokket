@@ -7,6 +7,8 @@ namespace sokket {
 	namespace clparser {
 		namespace config {
 			extern std::string quitCombination;
+			extern std::string fileMode;
+			extern std::atomic<bool> fileModeBool;
 		}
 		
 		int init(SOCKET& _sokket, std::string& receivedInformation);

@@ -1,8 +1,10 @@
 #include "commandlineparser.hpp"
 
 extern std::string sokket::clparser::config::quitCombination {":q"};
+extern std::string sokket::clparser::config::fileMode {":f"};
+extern std::atomic<bool> sokket::clparser::config::fileModeBool {false};
 
-//May not be thread safe for some time, sorry.
+//May not be thread safe for some time, sorry. Some mutexes would help.
 void sokket::clparser::readConsole(SOCKET& _sokket, std::atomic<bool>& stopProgram, bool& errorCode) {
 	std::wstring wideInput{};
 
@@ -10,25 +12,33 @@ void sokket::clparser::readConsole(SOCKET& _sokket, std::atomic<bool>& stopProgr
 		std::cout << "> ";
 		std::getline(std::wcin, wideInput);
 
-		std::string input{input.begin(), input.end()};
+		std::string input{wideInput.begin(), wideInput.end()};
 
 		if (input == sokket::clparser::config::quitCombination) {
 			errorCode = false;
 			stopProgram.store(true);
 
-			int result{ sokket::sendSocket(_sokket, sokket::clparser::config::quitCombination, 2) };
-
+			int result {sokket::sendSocket(_sokket, sokket::clparser::config::quitCombination, sokket::clparser::config::quitCombination.size())};
 			if (result != 0) {
 				errorCode = true;
 			}
 
 			sokket::shutdownSocket(_sokket);
 		}
+		else if (input.size() > 2 && input[0] == sokket::clparser::config::fileMode[0] && input[1] == sokket::clparser::config::fileMode[1]) {
+
+			int result {sokket::sendSocketFile(_sokket, input)};
+
+			if (result != 0) {
+				errorCode = true;
+				stopProgram.store(true);
+			}
+		}
 		else {
 			int result{};
 			
 			if (!stopProgram.load()) {
-				result = { sokket::sendSocket(_sokket, input, input.size()) };
+				result = sokket::sendSocket(_sokket, input, input.size());
 			}
 
 			if (result != 0) {

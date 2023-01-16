@@ -9,6 +9,9 @@
 #include <memory>
 #include <thread>
 #include <atomic>
+#include <fstream>
+#include <vector>
+#include <filesystem>
 
 #ifdef _WIN32
 //windows.h messes with std::min and std::max.
@@ -31,6 +34,7 @@ namespace sokket {
 
 	int shutdownSocket (SOCKET& _sokket);
 	int sendSocket (SOCKET& _sokket, std::string& sendBuffer, std::uint64_t sendBufferSize);
+	int sendSocketFile(SOCKET& _sokket, std::string& input);
 	int receiveSocket (SOCKET& _sokket, std::string& receivedInformation, bool& disconnect);
 }
 
