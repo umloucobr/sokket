@@ -1,12 +1,11 @@
 #include "commandlineparser.hpp"
 
-std::string sokket::clparser::config::quitCombination {":q"};
-std::string sokket::clparser::config::fileMode {":f"};
-std::string sokket::clparser::config::messageMode {":m"};
-std::atomic<bool> sokket::clparser::config::fileModeBool {false};
+extern std::string sokket::clparser::config::quitCombination {":q"};
+extern std::string sokket::clparser::config::fileMode {":f"};
+extern std::atomic<bool> sokket::clparser::config::fileModeBool {false};
 
 //May not be thread safe for some time, sorry. Some mutexes would help.
-void sokket::clparser::readConsole(SOCKET& _sokket, std::atomic<bool>& stopProgram, bool& errorCode, std::atomic<bool>& fileModeBool) {
+void sokket::clparser::readConsole(SOCKET& _sokket, std::atomic<bool>& stopProgram, bool& errorCode) {
 	std::wstring wideInput{};
 
 	while (!stopProgram.load()) {
@@ -26,32 +25,20 @@ void sokket::clparser::readConsole(SOCKET& _sokket, std::atomic<bool>& stopProgr
 
 			sokket::shutdownSocket(_sokket);
 		}
-		else if (input == sokket::clparser::config::fileMode) {
-			fileModeBool.store(true);
-			std::cout << "Entering file mode, send a file with \"Name of the file\" \"Path of the file\"\n";
+		else if (input.size() > 2 && input[0] == sokket::clparser::config::fileMode[0] && input[1] == sokket::clparser::config::fileMode[1]) {
 
-			int result {sokket::sendSocket(_sokket, sokket::clparser::config::fileMode, sokket::clparser::config::fileMode.size())};
+			int result {sokket::sendSocketFile(_sokket, input)};
+
 			if (result != 0) {
 				errorCode = true;
-			}
-		}
-		else if (input == sokket::clparser::config::messageMode) {
-			fileModeBool.store(false);
-
-			int result{sokket::sendSocket(_sokket, sokket::clparser::config::messageMode, sokket::clparser::config::messageMode.size())};
-			if (result != 0) {
-				errorCode = true;
+				stopProgram.store(true);
 			}
 		}
 		else {
 			int result{};
 			
-			if (!stopProgram.load() && !fileModeBool.load()) {
+			if (!stopProgram.load()) {
 				result = sokket::sendSocket(_sokket, input, input.size());
-			}
-			else if (!stopProgram.load() && fileModeBool.load())
-			{
-				result = sokket::sendSocketFile(_sokket, input);
 			}
 
 			if (result != 0) {
@@ -68,10 +55,10 @@ int sokket::clparser::init(SOCKET& _sokket, std::string& receivedInformation) {
 
 	bool errorCode {false}; //Error code for the sokket::clparser::readConsole thread. May need to be a std::atomic<bool> in the future.
 	std::atomic<bool> stopProgram {false};
-	std::thread readConsoleThread(sokket::clparser::readConsole, std::ref(_sokket), std::ref(stopProgram), std::ref(errorCode), std::ref(sokket::clparser::config::fileModeBool));
+	std::thread readConsoleThread(sokket::clparser::readConsole, std::ref(_sokket), std::ref(stopProgram), std::ref(errorCode));
 
 	while (!stopProgram.load()) {
-		result = sokket::receiveSocket(_sokket, receivedInformation, disconnect, sokket::clparser::config::fileModeBool);
+		result = sokket::receiveSocket(_sokket, receivedInformation, disconnect);
 		if (result != 0) {
 			errorCode = true;
 			stopProgram.store(true);
