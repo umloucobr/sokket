@@ -12,13 +12,13 @@ int sokket::WSACleanupWrapper() {
 	return 0;
 }
 
-int sokket::sendSocket(SOCKET& _sokket, std::string& sendBuffer, std::uint64_t sendBufferSize) {
+int sokket::sendSocket(SOCKET& _sokket, std::string& input, std::uint64_t inputSize) {
 	int iResult {0}; 
-	std::uint64_t bytesRemaining {sendBufferSize}; //Used on std::min, making a copy because I need to decrease it.
+	std::uint64_t bytesRemaining {inputSize}; //Used on std::min, making a copy because I need to decrease it.
 	std::uint64_t bytesSent {};
-	std::uint64_t sendSocketSize {}; //Size of the packet.
-	std::string buffer{}; //This buffer gets sendBuffer and divide it to match packet max size.
-	std::string totalSize {std::to_string(sendBufferSize)}; //Transform int in a std::string to send size over packet. Yes, it's trash.
+	std::uint64_t bufferSize {};
+	std::string totalSize {std::to_string(inputSize)}; //Size of the packet in std::string.
+	std::string buffer{}; //This buffer gets sendBuffer and divide it to match packet max size. It's the buffer who is actually sent.
 
 	//Basically, if it is a message the size number will begin with a 0, and a 1 for files.
 	totalSize.insert(0, 1, '0');
@@ -32,11 +32,12 @@ int sokket::sendSocket(SOCKET& _sokket, std::string& sendBuffer, std::uint64_t s
 	}
 	
 	//Send contents.
-	while (bytesSent < sendBufferSize) {
-		sendSocketSize = std::min(bytesRemaining, static_cast<std::uint64_t>(sokket::config::bufferSize));
-		buffer.assign(sendBuffer, bytesSent, sendSocketSize);
+	while (bytesSent < inputSize) {
+		buffer = "";
+		bufferSize = std::min(bytesRemaining, static_cast<std::uint64_t>(sokket::config::bufferSize));
+		buffer.assign(input, bytesSent, inputSize);
 
-		iResult = send(_sokket, buffer.c_str(), static_cast<int>(sendSocketSize), 0);
+		iResult = send(_sokket, buffer.c_str(), static_cast<int>(bufferSize), 0);
 		if (iResult == SOCKET_ERROR) {
 			std::cerr << "send failed with error: " << WSAGetLastError() << ".\n";
 			closesocket(_sokket);
@@ -44,13 +45,12 @@ int sokket::sendSocket(SOCKET& _sokket, std::string& sendBuffer, std::uint64_t s
 			return 1;
 		}
 
-		bytesSent += sendSocketSize;
-		bytesRemaining -= sendSocketSize;
+		bytesSent += bufferSize;
+		bytesRemaining -= bufferSize;
 	}
 
-	if (bytesSent != sendBufferSize)
-	{
-		std::cout << "Error! Sent " << bytesSent << " but total number of bytes is " << sendBufferSize << ".\n";
+	if (bytesSent != inputSize) {
+		std::cout << "Error! Sent " << bytesSent << " but total number of bytes is " << inputSize << ".\n";
 	}
 
 	return 0;
@@ -63,13 +63,13 @@ int sokket::sendSocketFile(SOCKET& _sokket, std::string& input) {
 	bool fileCombination {true}; //This goes on the loop to remove the :f. 
 	int iResult {};
 	std::uint64_t bytesRemaining {};
-	std::uint64_t sendSocketSize {}; //Size of the packet.
-	std::uint64_t bytesSent {};
+	std::uint64_t bytesSent{};
+	std::uint64_t bufferSize {}; //Size of the packet.
 	std::string tempString{}; //Separate the file mode combination, name of the file and it's path.
 	std::string fileName{};
 	std::string filePath{};
 	std::string totalSize{}; //Send total size.
-	binary_data sendBuffer(sokket::config::bufferSize); //Lots of buffers, but this one is the one that is actually sent. Has a max size of sokket::config::bufferSize.
+	binary_data buffer(sokket::config::bufferSize); //Lots of buffers, but this one is the one that is actually sent. Has a max size of sokket::config::bufferSize.
 
 	for (auto c: input) {
 		if (c == ' ' && fileCombination) {
@@ -104,19 +104,13 @@ int sokket::sendSocketFile(SOCKET& _sokket, std::string& input) {
 		//Basically, if it is a message the size number will begin with a 0, and a 1 for files.
 		totalSize.insert(0, 1, '1');
 
-		//Send size first.
-		iResult = send(_sokket, totalSize.c_str(), static_cast<int>(totalSize.size()), 0);
-		if (iResult == SOCKET_ERROR) {
-			std::cerr << "send size failed with error: " << WSAGetLastError() << ".\n";
-			closesocket(_sokket);
-			WSACleanupWrapper();
-			return 1;
-		}
+		//The 'r' is used to separate the size and name on the receiving end.
+		std::string fileNameAndSize {totalSize + '\r' + fileName};
 
-		//Send file name.
-		iResult = send(_sokket, fileName.c_str(), static_cast<int>(fileName.size()), 0);
+		//Send size and file name.
+		iResult = send(_sokket, fileNameAndSize.c_str(), static_cast<int>(fileNameAndSize.size()), 0);
 		if (iResult == SOCKET_ERROR) {
-			std::cerr << "send file name failed with error: " << WSAGetLastError() << ".\n";
+			std::cerr << "send size and file name failed with error: " << WSAGetLastError() << ".\n";
 			closesocket(_sokket);
 			WSACleanupWrapper();
 			return 1;
@@ -124,17 +118,18 @@ int sokket::sendSocketFile(SOCKET& _sokket, std::string& input) {
 
 		//Send contents.
 		while (bytesSent < fileSize) {
-			sendBuffer.clear();
-			sendSocketSize = std::min(bytesRemaining, static_cast<std::uint64_t>(sokket::config::bufferSize));
+			buffer.clear();
+			buffer.resize(sokket::config::bufferSize);
+			bufferSize = std::min(bytesRemaining, static_cast<std::uint64_t>(sokket::config::bufferSize));
 			{
 				int i {0};
 				uint64_t j {bytesSent};
-				for (i = 0, j = bytesSent; i <= sendSocketSize - 1; i++, j++) {
-					sendBuffer[i] = wholeFile[j];
+				for (i = 0, j = bytesSent; i <= bufferSize - 1; i++, j++) {
+					buffer[i] = wholeFile[j];
 				}
 			}
 
-			iResult = send(_sokket, reinterpret_cast<char*>(sendBuffer.data()), static_cast<int>(sendSocketSize), 0);
+			iResult = send(_sokket, reinterpret_cast<char*>(buffer.data()), static_cast<int>(bufferSize), 0);
 			if (iResult == SOCKET_ERROR) {
 				std::cerr << "send failed with error: " << WSAGetLastError() << ".\n";
 				closesocket(_sokket);
@@ -142,8 +137,8 @@ int sokket::sendSocketFile(SOCKET& _sokket, std::string& input) {
 				return 1;
 			}
 
-			bytesSent += sendSocketSize;
-			bytesRemaining -= sendSocketSize;
+			bytesSent += bufferSize;
+			bytesRemaining -= bufferSize;
 		}
 	}
 	else {
@@ -159,55 +154,81 @@ int sokket::receiveSocket(SOCKET& _sokket, bool& disconnect) {
 	bool packetEnd {false};
 	bool receiveSize {true}; //The first packet is the size of the contents.
 	bool fileModeBool {false};
-	bool receiveFileName {false}; //If it's a file, the second packet contains the file name.
-	char receiveBuffer[sokket::config::bufferSize + 1]; //1 more space for a null terminator if necessary.	
-	char quit {};
+	bool getFileName {false};
+	char receiveBuffer[sokket::config::bufferSize + 1] {}; //1 more space for a null terminator if necessary.	
 	int iResult {};
 	std::uint64_t contentsSize {};
 	std::uint64_t bytesReceived {};
 	std::uint64_t receivedInformationFileIterator {};
-	std::string receivedInformation{};
-	std::string fileName{"default.txt"};
+	std::string receivedInformation {};
+	std::string fileName {"default.txt"};
 	binary_data receivedInformationFile {};
+	binary_data receivedNameAndSize{};
 
 	do {
-		iResult = recv(_sokket, receiveBuffer, sokket::config::bufferSize + 1, 0);
+		receiveBuffer[0] = '\0';
+		iResult = 0;
+		iResult = recv(_sokket, receiveBuffer, sokket::config::bufferSize, 0);
 		if (iResult > 0) {
-			//The first packet is always the total size in bytes of the contents, so this receive the size. If it begins with a 0 it is a message, or a 1 for files.
+			//The first packet is always the total size in bytes of the contents and the file name, if it's a file. If it begins with a 0 it is a message, or a 1 for files.
 			if (receiveSize) {
 				receiveBuffer[iResult] = '\0';
 
 				if (receiveBuffer[0] == '0') {
 					fileModeBool = false;
+
+					contentsSize = std::atoi(receiveBuffer);
 				}
 				else {
 					fileModeBool = true;
-					receiveFileName = true;
+
+					receiveBuffer[0] = '0';
+
+					receivedNameAndSize.insert(receivedNameAndSize.end(), receiveBuffer , receiveBuffer + iResult);
+
+					{
+						bool size{};
+						std::string temp{};
+						std::string temp2{};
+						int j{};
+						for (auto i : receivedNameAndSize) {
+							if (!getFileName && receivedNameAndSize[j] != '\r') {
+								temp.push_back(receivedNameAndSize[j]);
+							}
+							else if (getFileName || receivedNameAndSize[j] == '\r') {
+								getFileName = true;
+								if (receivedNameAndSize[j] != '\r') {
+									temp2.push_back(receivedNameAndSize[j]);
+								}
+							}
+							j++;
+						}
+
+						contentsSize = std::stoll(temp);
+						fileName = temp2;
+					}
 				}
-
-				receiveBuffer[0] = '0';
-
 				receiveSize = false;
-				contentsSize = atoi(receiveBuffer); //Transform contents size to a 64 bits unsigned integer because you can only send and receive a const char* buffer.
-				receivedInformationFile.resize(contentsSize);
-			}
-			else if(receiveFileName) {
-				receiveBuffer[iResult] = '\0';
 
-				fileName = receiveBuffer;
-				receiveFileName = false;
+				if (fileModeBool) {
+					receivedInformationFile.resize(contentsSize);
+				}
+				else {
+					receivedInformation.resize(contentsSize);
+				}
 			}
 			else {
 				if (fileModeBool) {
 					packetEnd = false;
 
 					bytesReceived += iResult;
-					for (int i {0}; i < iResult; i++) {
+
+					for (int i {0}; i <= iResult - 1; i++) {
 						receivedInformationFile[receivedInformationFileIterator] = receiveBuffer[i];
 						receivedInformationFileIterator++;
 					}
 				}
-				else {
+				else if (!fileModeBool){
 					packetEnd = false;
 
 					receiveBuffer[iResult] = '\0';
@@ -216,7 +237,7 @@ int sokket::receiveSocket(SOCKET& _sokket, bool& disconnect) {
 					receivedInformation += receiveBuffer;
 				}
 			}
-
+	
 			if (bytesReceived == contentsSize) {   
 				bytesReceived = 0;
 				iResult = 0;
@@ -242,8 +263,9 @@ int sokket::receiveSocket(SOCKET& _sokket, bool& disconnect) {
 				//If other user send the quit command, disconnect = true so sokket::clparser can disconnect too.
 				if (receivedInformation == sokket::clparser::config::quitCombination) { 
 					disconnect = true;
+					return 0;
 				}
-				receivedInformation = "";
+				receivedInformation.clear();
 			}
 		}
 

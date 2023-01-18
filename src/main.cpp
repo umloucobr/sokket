@@ -15,7 +15,7 @@ int main(int argc, char* argv[]) {
 	bool autoMode {true}; //If this mode is set to true (default), if the client can't connect to a server he will become the server.
 	SOCKET sokket {INVALID_SOCKET};
 
-	if (argc == 4 && argc != 1) {
+	if (argc == 4) {
 		std::vector<std::string> arguments(argv + 1, argv + argc); //This does NOT store the name of the program as the first index.
 
 		if (arguments[0] == "-a") {
@@ -36,6 +36,25 @@ int main(int argc, char* argv[]) {
 		sokket::config::port = arguments[1];
 		sokket::config::address = arguments[2];
 
+	}
+	else if (argc == 2) {
+		std::vector<std::string> arguments(argv + 1, argv + argc); //This does NOT store the name of the program as the first index.
+
+		if (arguments[0] == "-a") {
+			autoMode = true;
+		}
+		else if (arguments[0] == "-c") {
+			isClient = true;
+			autoMode = false;
+		}
+		else if (arguments[0] == "-s") {
+			isClient = false;
+			autoMode = false;
+		}
+		else {
+			std::cout << "How to use: sokket [-a for automatic mode, -c for client and -s for server] [port] [address]\n";
+			return 1;
+		}
 	}
 	else if (argc == 1) {
 		autoMode = true;
@@ -67,7 +86,7 @@ clientOrServer: //Yes, it is a goto. That is the best way to do this, for now.
 	else {
 		std::cout << "Entering client mode.\n";
 		std::cout << "Port: " << sokket::config::port << '\n';
-		std::cout << "Address: " << sokket::config::port << '\n';
+		std::cout << "Address: " << sokket::config::address << '\n';
 		std::cout << "Connecting...\n";
 
 		int result {sokket::client::setupSocket(sokket, autoMode)}; //sokket::shutdownSocket is inside clparser. Sorry.

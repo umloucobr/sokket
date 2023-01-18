@@ -12,6 +12,7 @@
 #include <fstream>
 #include <vector>
 #include <filesystem>
+#include <iterator>
 
 #ifdef _WIN32
 //windows.h messes with std::min and std::max.
